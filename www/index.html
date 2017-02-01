@@ -1,0 +1,96 @@
+<!doctype html>
+
+<html>
+  <head>
+    <title>node music player</title>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-1.12.4.js">
+    </script>
+  </head>
+  <body>
+    <select id="artist" onchange="loadAlbum();"></select>
+    <select id="album" onchange="loadTrack();"></select>
+    <select id="track" onchange="setAudio();"></select>
+    <br>
+    <audio id="audio" controls="controls" src="">
+      Your browser does not grok the audio element.
+    </audio>
+    <script type="text/javascript">
+      $(() => {
+        $.get('/api/artists', (data) => {
+          let artistEl = $('#artist');
+          let options = '';
+          if ($.isArray(data)) {
+            data.forEach((artist) => {
+              options += '<option>' + artist + '</option>';
+            });
+          }
+          artistEl.html(options);
+          loadAlbum();
+        });
+      });
+      
+      function loadAlbum() {
+        let artistEl = $('#artist');
+        let artist = artistEl.val();
+        let albumEl = $('#album');
+        $.get('/api/artists/' + encodeURIComponent(artist) + '/albums', (data) => {
+          let options = '';
+          if ($.isArray(data)) {
+            data.forEach((album) => {
+              options += '<option>' + album + '</option>';
+            });
+          }
+          albumEl.html(options);
+          loadTrack();
+        });
+      }
+      
+      function loadTrack() {
+        let artistEl = $('#artist');
+        let artist = artistEl.val();
+        let albumEl = $('#album');
+        let album = albumEl.val();
+        let trackEl = $('#track');
+        $.get('/api/artists/' + encodeURIComponent(artist) + '/albums/' + encodeURIComponent(album) + '/tracks', (data) => {
+          let options = '<option></option>';
+          if ($.isArray(data)) {
+            data.forEach((track) => {
+              options += '<option>' + track + '</option>';
+            });
+          }
+          trackEl.html(options);
+          setAudio();
+        });
+      }
+
+      function setAudio() {
+        let artistEl = $('#artist');
+        let artist = artistEl.val();
+        let albumEl = $('#album');
+        let album = albumEl.val();
+        let trackEl = $('#track');
+        let track = trackEl.val();
+        let audioEl = $('#audio');
+        if (track) {
+          $.get('/api/artists/' + encodeURIComponent(artist) + '/albums/' + encodeURIComponent(album) + '/tracks/' + encodeURIComponent(track) + '/details', (data) => {
+            if (data) {
+              audioEl.attr('src', '/music/' + encodePath(data.path));
+            } else {
+              audioEl.attr('src', '');
+            }
+          });
+        } else {
+          audioEl.attr('src', '');
+        }
+      }
+      
+      function encodePath(path) {
+        parts = path.split('/');
+        for (var i = 0; i < parts.length; i++) {
+          parts[i] = encodeURIComponent(parts[i]);
+        }
+        return parts.join('/');
+      }
+    </script>
+  </body>
+</html>

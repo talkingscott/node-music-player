@@ -2,7 +2,7 @@
 
 'use strict';
 
-const MUSIC_ROOT = '/Users/snichol/music';
+const MUSIC_ROOT = process.env.MUSIC_ROOT || '/Users/snichol/music';
 
 const express = require('express');
 const morgan = require('morgan');

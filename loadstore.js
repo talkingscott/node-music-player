@@ -1,9 +1,8 @@
 'use strict';
 
-const os = require('os');
-const pth = require('path');
 const util = require('util');
 
+const appenv = require('./appenv');
 const mp3file = require('./mp3file');
 const mp3store = require('./mp3store');
 
@@ -133,7 +132,7 @@ function aggregateAndStoreInfo(infos, callback) {
 
 }
 
-mp3file.collect(pth.join(os.homedir(), 'music'), (err, infos) => {
+mp3file.collect(appenv.music_root, (err, infos) => {
   if (err) {
     console.error(err);
   } else {

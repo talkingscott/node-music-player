@@ -3,7 +3,7 @@
  */
 'use strict';
 
-const fs = require('fs-ext');
+const fs = require('fs');
 
 const FRAME_HEADER_SIZE = 10;
 
@@ -115,16 +115,17 @@ function parseFrameContent(frameHeader, buffer) {
  * Reads a frame from a open file at its current file position.
  *
  * @param {fileDescriptor} fd The file descriptor.
- * @param {Function} callback Receives the result, (err, frame)
+ * @param {Function} callback Receives the result, (err, frame, bytesRead)
  */
 function readFrame(fd, callback) {
   let buf = new Buffer(FRAME_HEADER_SIZE);
   fs.read(fd, buf, 0, FRAME_HEADER_SIZE, null, (err, bytesRead, buffer) => {
     if (err) {
-      callback('Reading frame header: ' + err, null);
+      callback('Reading frame header: ' + err, null, null);
     } else if (bytesRead != FRAME_HEADER_SIZE) {
-      callback('Only read ' + bytesRead + ' for frame header', null);
+      callback('Only read ' + bytesRead + ' for frame header', null, null);
     } else {
+      let pos = bytesRead;
       // ID3FrameHeader pseudo-class
       let frameHeader = {
         id: buffer.toString('ascii', 0, 4),
@@ -136,7 +137,7 @@ function readFrame(fd, callback) {
           header: frameHeader,
           content: null
         };
-        callback(null, frame);
+        callback(null, frame, pos);
       } else {
         let buf = new Buffer(frameHeader.size);
         fs.read(fd, buf, 0, frameHeader.size, null, (err, bytesRead, buffer) => {
@@ -149,7 +150,7 @@ function readFrame(fd, callback) {
               header: frameHeader,
               content: parseFrameContent(frameHeader, buffer)
             };
-            callback(null, frame);
+            callback(null, frame, pos + bytesRead);
           }
         });
       }
@@ -163,44 +164,43 @@ function readFrame(fd, callback) {
  * has been read.
  *
  * @param {fileDescriptor} fd The file descriptor.
+ * @param {Number} bytesRead The number of bytes already read from the file.
  * @param {Number} tagSize The size of the ID3 tag, in bytes, including the ID3 header.
  * @param {Array} frames The list of frames being accumulated.
  * @param {Function} callback Receives the result after all frames are accumulated, (err, frames).
  */
-function readFramesRecursive(fd, tagSize, frames, callback) {
-  fs.seek(fd, 0, 1, (err, currFilePos) => {
-    if (err) {
-      callback('Seeking: ' + err, null);
-    } else if (currFilePos >= tagSize) {
-      //console.log('@' + currFilePos);
-      callback(null, frames);
-    } else {
-      //console.log('@' + currFilePos);
-      readFrame(fd, (err, frame) => {
-        if (err) {
-          callback(err, null);
+function readFramesRecursive(fd, bytesRead, tagSize, frames, callback) {
+  if (bytesRead >= tagSize) {
+    //console.log('@' + bytesRead);
+    callback(null, frames);
+  } else {
+    //console.log('@' + bytesRead);
+    let pos = bytesRead;
+    readFrame(fd, (err, frame, bytesRead) => {
+      if (err) {
+        callback(err, null);
+      } else {
+        frames.push(frame);
+        if (frame.content == null) {
+          callback(null, frames);
         } else {
-          frames.push(frame);
-          if (frame.content == null) {
-            callback(null, frames);
-          } else {
-            readFramesRecursive(fd, tagSize, frames, callback);
-          }
+          readFramesRecursive(fd, pos + bytesRead, tagSize, frames, callback);
         }
-      });
-    }
-  });
+      }
+    });
+  }
 }
 
 /**
  * Reads all the frames from an open file already positioned at the first frame.
  *
  * @param {fileDescriptor} fd The file descriptor.
+ * @param {Number} bytesRead The number of bytes already read from the file.
  * @param {Number} tagSize The size of the ID3 tag, in bytes, including the header.
  * @param {Function} callback Receives the result, (err, frames).
  */
-function readFrames(fd, tagSize, callback) {
-  readFramesRecursive(fd, tagSize, [], (err, frames) => {
+function readFrames(fd, bytesRead, tagSize, callback) {
+  readFramesRecursive(fd, bytesRead, tagSize, [], (err, frames) => {
     if (err) {
       callback(err, null);
     } else {
@@ -213,33 +213,35 @@ function readFrames(fd, tagSize, callback) {
  * Reads the ID3 tag extended header from an open file.
  *
  * @param {fileDescriptor} fd The file descriptor.
- * @param {Function} callback Receives the result, (err, id3TagExtendedHeader)
+ * @param {Function} callback Receives the result, (err, id3TagExtendedHeader, bytesRead)
  */
 function readExtendedHeader(fd, callback) {
   let buf = new Buffer(10);
   fs.read(fd, buf, 0, 4, null, (err, bytesRead, buffer) => {
     if (err) {
-      callback(err, null);
+      callback(err, null, null);
     } else if (bytesRead != 4) {
-      callback('Only read ' + bytesRead, null);
+      callback('Only read ' + bytesRead, null, null);
     } else {
       let len = buffer.readInt32BE(0);
       if (len != 6 && len != 10) {
-        callback('Unexpected extended header length ' + len, null);
+        callback('Unexpected extended header length ' + len, null, null);
       } else {
+        let pos = bytesRead;
         fs.read(fd, buf, 0, len, null, (err, bytesRead, buffer) => {
           if (err) {
-            callback(err, null);
+            callback(err, null, null);
           } else if (bytesRead != len) {
-            callback('Only read ' + bytesRead, null);
+            callback('Only read ' + bytesRead, null, null);
           } else {
+            pos += bytesRead;
             // ID3TagExtendedHeader pseudo-class
             let extendedHeader = {
               size: len,
               flags: buffer.readUInt16BE(0),
               padsize: buffer.readUInt32BE(2)
             };
-            callback(null, extendedHeader);
+            callback(null, extendedHeader, pos);
           }
         });
       }
@@ -252,7 +254,7 @@ function readExtendedHeader(fd, callback) {
  * from an open file descriptor.
  *
  * @param {fileDescriptor} fd The file descriptor.
- * @param {Function} callback Receives the result, (err, id3TagHeader)
+ * @param {Function} callback Receives the result, (err, id3TagHeader, bytesRead)
  */
 function readHeader(fd, callback) {
   let buf = new Buffer(FRAME_HEADER_SIZE);
@@ -271,17 +273,19 @@ function readHeader(fd, callback) {
         size: buffer[6] * (2 << 21) + buffer[7] * (2 << 14) + buffer[8] * (2 << 7) + buffer[9],
         extended: {}
       };
+      let pos = bytesRead;
       if (header.flags & 0x40 != 0) {
-        readExtendedHeader(fd, (err, extendedHeader) => {
+        readExtendedHeader(fd, (err, extendedHeader, bytesRead) => {
           if (err) {
-            callback(err, null);
+            callback(err, null, null);
           } else {
+            pos += bytesRead;
             header.extended = extendedHeader;
-            callback(null, header);
+            callback(null, header, pos);
           }
         });
       } else {
-        callback(null, header);
+        callback(null, header, pos);
       }
     }
   });
@@ -294,11 +298,11 @@ function readHeader(fd, callback) {
  * @param {Function} callback Receives the results, (err, id3tag)
  */
 function readID3Tag(fd, callback) {
-  readHeader(fd, (err, header) => {
+  readHeader(fd, (err, header, bytesRead) => {
     if (err) {
       callback(err, null);
     } else {
-      readFrames(fd, FRAME_HEADER_SIZE + header.size, (err, frames) => {
+      readFrames(fd, bytesRead, FRAME_HEADER_SIZE + header.size, (err, frames) => {
         if (err) {
           callback('Reading frames: ' + err);
         } else {

@@ -1,3 +1,6 @@
+/**
+ * @module db
+ */
 'use strict';
 
 const level = require('level');  

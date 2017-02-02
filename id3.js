@@ -7,12 +7,16 @@ const fs = require('fs');
 
 const FRAME_HEADER_SIZE = 10;
 
+function removeBOM(s) {
+  return (s.charAt(0) == '\ufeff') ? s.substr(1, s.length) : s;
+}
+
 function parseComment(buffer) {
   let encoding = buffer[0];
   let language = buffer.toString('ascii', 1, 4);
   let comment = null;
   if (encoding == 1) {
-    comment = buffer.toString('utf16le', 4, buffer.length);
+    comment = removeBOM(buffer.toString('utf16le', 4, buffer.length));
   } else {
     comment = buffer.toString('ascii', 4, buffer.length);
   }
@@ -33,7 +37,7 @@ function parseUnicodeC(buffer, offset) {
   while (buffer.readUInt16LE(i) != 0) {
     i += 2;
   }
-  return buffer.toString('utf16le', offset, i);
+  return removeBOM(buffer.toString('utf16le', offset, i));
 }
 
 function parseGeneralEncapsulatedObject(buffer) {
@@ -71,7 +75,7 @@ function parsePrivate(buffer) {
 function parseTextInformation(buffer) {
   let encoding = buffer[0];
   if (encoding == 1) {
-    return buffer.toString('utf16le', 1, buffer.length);
+    return removeBOM(buffer.toString('utf16le', 1, buffer.length));
   } else {
     return buffer.toString('ascii', 1, buffer.length);
   }

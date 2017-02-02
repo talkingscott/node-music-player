@@ -20,6 +20,14 @@ app.get('/api/artists', (req, res) => {
       res.status(500);
       res.send(err);
     } else {
+      artists.sort((a1, a2) => {
+        let u1 = a1.toUpperCase();
+        let u2 = a2.toUpperCase();
+        if (u1 < u2) {
+          return -1;
+        }
+        return (u1 > u2) ? 1 : 0;
+      });
       res.send(artists);
     }
   });

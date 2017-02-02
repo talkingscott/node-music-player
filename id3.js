@@ -4,6 +4,7 @@
 'use strict';
 
 const fs = require('fs');
+const util = require('util');
 
 const FRAME_HEADER_SIZE = 10;
 
@@ -136,7 +137,8 @@ function readFrame(fd, callback) {
         size: buffer.readUInt32BE(4),
         flags: buffer.readUInt16BE(8)
       };
-      if (frameHeader.size == 0) {
+      if (frameHeader.id == '\u0000\u0000\u0000\u0000' || frameHeader.size == 0) {
+        // ID3Frame pseudo-class
         let frame = {
           header: frameHeader,
           content: null
@@ -148,7 +150,7 @@ function readFrame(fd, callback) {
           if (err) {
             callback('Reading frame content: ' + err, null);
           } else if (bytesRead != frameHeader.size) {
-            callback('Only read ' + bytesRead + ' for frame content', null);
+            callback('Only read ' + bytesRead + ' for frame content, header: ' + util.inspect(frameHeader), null);
           } else {
             let frame = {
               header: frameHeader,
@@ -182,7 +184,7 @@ function readFramesRecursive(fd, bytesRead, tagSize, frames, callback) {
     let pos = bytesRead;
     readFrame(fd, (err, frame, bytesRead) => {
       if (err) {
-        callback(err, null);
+        callback('Reading frame @' + pos + ': ' + err, null);
       } else {
         frames.push(frame);
         if (frame.content == null) {

@@ -2,7 +2,7 @@
   "name": "node-audio-player",
   "version": "1.0.0",
   "description": "Simple browser-based audio player",
-  "main": "node_audio_player.js",
+  "main": "node-audio-player.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

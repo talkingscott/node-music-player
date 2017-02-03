@@ -3,10 +3,11 @@
  */
 'use strict';
 
-const level = require('level');  
+const level = require('level');
 const path = require('path');
 
-const dbPath = process.env.DB_PATH || path.join(__dirname, 'db');  
-const db = level(dbPath);
+const appenv = require('./appenv');
+
+const db = level(appenv.db_path);
 
 module.exports = db;  

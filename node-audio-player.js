@@ -76,11 +76,10 @@ app.get('/api/artists/:artist/albums/:album/tracks/:track/details', (req, res) =
   });
 });
 
-const port = process.env.PORT || 3000;
-app.listen(port, (err) => {
+app.listen(appenv.port, (err) => {
   if (err) {
-    console.error('Error ' + err + ' trying to listen on port ' + port);
+    console.error('Error ' + err + ' trying to listen on port ' + appenv.port);
   } else {
-    console.info('Listening on port ' + port);
+    console.info('Listening on port ' + appenv.port);
   }
 });

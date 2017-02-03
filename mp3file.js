@@ -4,7 +4,9 @@
 'use strict';
 
 const dir = require('node-dir');
+const vasync = require('vasync');
 
+const appenv = require('./appenv');
 const id3 = require('./id3');
 
 /**
@@ -91,20 +93,30 @@ function getMP3FileInfo(path, callback) {
  */
 function getMP3FileInfos(mp3files, callback) {
   let fileInfos = [];
-  let count = 0;
-  mp3files.forEach((file) => {
+
+  let q = vasync.queue((file, callback) => {
     getMP3FileInfo(file, (err, info) => {
       if (err) {
         console.error(err);
+        callback(err);
       } else {
         fileInfos.push(info);
-      }
-      ++count;
-      if (count == mp3files.length) {
-        callback(null, fileInfos);
+        callback();
       }
     });
+  }, appenv.load_concurrency);
+  
+  q.on('end', () => {
+    callback(null, fileInfos);
   });
+  
+  q.push(mp3files, (err) => {
+    if (err) {
+      console.error(err);
+    }
+  });
+  
+  q.close();
 }
 
 /**

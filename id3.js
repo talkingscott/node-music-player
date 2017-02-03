@@ -22,6 +22,7 @@ function parseComment(buffer) {
     comment = buffer.toString('ascii', 4, buffer.length);
   }
   let parts = comment.split('\u0000', 2);
+  // ID3Comment pseudo-class
   return { language: language, shortDesc: parts[0], fullText: parts[1] };
 }
 
@@ -64,12 +65,14 @@ function parseGeneralEncapsulatedObject(buffer) {
     offset += description.length + 1;
   }
 
+  // ID3GEOB pseudo-class
   return { mimeType: mimeType, filename: filename, description: description, encapsulatedObject:  buffer.slice(offset, buffer.length) };
 }
 
 function parsePrivate(buffer) {
   let owner = parseAsciiC(buffer, 0);
   let offset = owner.length + 1;
+  // ID3Private pseudo-class
   return { owner: owner, priv: buffer.slice(offset, buffer.length) };
 }
 
@@ -144,6 +147,14 @@ function readFrame(fd, callback) {
           content: null
         };
         callback(null, frame, pos);
+      } else if (frameHeader.id.charAt(0) == '\u0000' || frameHeader.size >= 1000000) {
+        console.log('Frame header failed sanity check');
+        // ID3Frame pseudo-class
+        let frame = {
+          header: frameHeader,
+          content: null
+        };
+        callback(null, frame, pos);
       } else {
         let buf = new Buffer(frameHeader.size);
         fs.read(fd, buf, 0, frameHeader.size, null, (err, bytesRead, buffer) => {
@@ -152,6 +163,7 @@ function readFrame(fd, callback) {
           } else if (bytesRead != frameHeader.size) {
             callback('Only read ' + bytesRead + ' for frame content, header: ' + util.inspect(frameHeader), null);
           } else {
+            // ID3Frame pseudo-class
             let frame = {
               header: frameHeader,
               content: parseFrameContent(frameHeader, buffer)

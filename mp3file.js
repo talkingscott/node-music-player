@@ -92,11 +92,14 @@ function getMP3FileInfo(path, callback) {
  * @param {Function} callback Receives the results, (err, mp3FileInfos)
  */
 function getMP3FileInfos(mp3files, callback) {
+  let errors = [];
   let fileInfos = [];
 
   let q = vasync.queue((file, callback) => {
     getMP3FileInfo(file, (err, info) => {
+      console.log('Processed ' + file);
       if (err) {
+        errors.push(err);
         console.error(err);
         callback(err);
       } else {
@@ -107,6 +110,7 @@ function getMP3FileInfos(mp3files, callback) {
   }, appenv.load_concurrency);
   
   q.on('end', () => {
+    // TODO: if errors is not empty, callback with it
     callback(null, fileInfos);
   });
   
@@ -126,10 +130,12 @@ function getMP3FileInfos(mp3files, callback) {
  * @param {Function} callback Receives the results, (err, mp3FileInfos)
  */
 function collectMP3FileInfo(root, callback) {
+  console.log('Get list of files under ' + root);
   dir.files(root, (err, files) => {
     if (err) {
       callback('Getting files under ' + root + ': ' + err, null);
     } else {
+      console.log('Got list of files');
       let mp3files = [];
       files.forEach((file) => {
         if (file.endsWith('.mp3')) {

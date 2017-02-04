@@ -18,7 +18,7 @@ app.use(MUSIC_MOUNT, express.static(appenv.music_root));
 app.use('/', express.static(__dirname + '/www'));
 
 function encodePath(path) {
-  let parts = path.split('/');
+  let parts = path.split(/[\\/]/);
   for (let i = 0; i < parts.length; i++) {
     parts[i] = encodeURIComponent(parts[i]);
   }

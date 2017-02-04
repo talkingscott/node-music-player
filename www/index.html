@@ -2,27 +2,61 @@
 
 <html>
   <head>
-    <title>node music player</title>
-    <script type="text/javascript" src="https://code.jquery.com/jquery-1.12.4.js">
-    </script>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>node audio player</title>
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
   </head>
   <body>
-    <select id="artist" onchange="loadAlbum();"></select>
-    <select id="album" onchange="loadTrack();"></select>
-    <select id="track" ondblclick="addTrack();"></select>
-    <button id="add" type="button" onclick="addTrack();">Add</button>
-    <ul id="playlist">
-    </ul>
-    <br>
-    <audio id="audio" controls="controls" src="" onended="nextTrack();">
-      Your browser does not grok the audio element.
-    </audio>
+    <div class="container">
+      <div class="row">
+        <div class="col-md-3">
+          <select id="artist"></select>
+        </div>
+        <div class="col-md-4">
+          <select id="album"></select>
+        </div>
+        <div class="col-md-4">
+          <select id="track"></select>
+        </div>
+        <div class="col-md-1">
+          <button class="btn btn-primary" id="add" type="button">Add</button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-12">
+          <ul class="list-unstyled" id="pendinglist"></ul>
+        </div>
+      <div class="row">
+        <div class="col-md-12">
+          <audio id="audio" controls="controls">
+            Your browser does not grok the audio element.
+          </audio>
+        </div>
+      </div>
+    </div>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
     <script type="text/javascript">
-      var playlist = [];
+      const playlist = [];
 
       $(() => {
+        let artistEl = $('#artist');
+        artistEl.on('change', loadAlbum);
+        let albumEl = $('#album');
+        albumEl.on('change', loadTrack)
+        let trackEl = $('#track');
+        trackEl.on('dblclick', addTrack);
+        let addEl = $('#add');
+        addEl.on('click', addTrack);
+        let audioEl = $('#audio');
+        audioEl.on('ended', nextTrack);
+
         $.get('/api/artists', (data) => {
-          let artistEl = $('#artist');
           let options = '';
           if ($.isArray(data)) {
             data.forEach((artist) => {
@@ -84,7 +118,7 @@
       }
 
       function addToPlaylist(track, path) {
-        let playlistEl = $("#playlist");
+        let playlistEl = $("#pendinglist");
         playlistEl.html(playlistEl.html() + '<li>' + track + '</li>\n');
         playlist.push({track: track, path: path});
         if (playlist.length == 1) {
@@ -93,7 +127,7 @@
       }
 
       function removeFirstFromPlaylist() {
-        let playlistEl = $("#playlist");
+        let playlistEl = $("#pendinglist");
         let html = playlistEl.html();
         let idx = html.indexOf('</li>');
         playlistEl.html(html.substr(idx + 5, html.length));

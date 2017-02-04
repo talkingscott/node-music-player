@@ -3,15 +3,34 @@
 'use strict';
 
 const express = require('express');
+const cors = require('cors');
 const morgan = require('morgan');
 const appenv = require('./appenv');
 const mp3store = require('./mp3store');
 
 const app = express();
 
+const MUSIC_MOUNT = '/music';
+
 app.use(morgan('combined'));
-app.use('/music', express.static(appenv.music_root));
+app.use(cors());
+app.use(MUSIC_MOUNT, express.static(appenv.music_root));
 app.use('/', express.static(__dirname + '/www'));
+
+function encodePath(path) {
+  let parts = path.split('/');
+  for (let i = 0; i < parts.length; i++) {
+    parts[i] = encodeURIComponent(parts[i]);
+  }
+  return parts.join('/');
+}
+
+function urlPathFromFile(filepath) {
+  return encodePath(filepath.startsWith(appenv.music_root) ? (MUSIC_MOUNT + filepath.substr(appenv.music_root.length, filepath.length)) : filepath);
+}
+
+// enable CORS pre-flight requests on all routes
+app.options('*', cors());
 
 app.get('/api/artists', (req, res) => {
   mp3store.getArtists((err, artists) => {
@@ -70,7 +89,7 @@ app.get('/api/artists/:artist/albums/:album/tracks/:track/details', (req, res) =
       res.status(500);
       res.send(err);
     } else {
-      details.path = details.path.startsWith(appenv.music_root) ? details.path.substr(appenv.music_root.length, details.path.length) : details.path;
+      details.path = urlPathFromFile(details.path);
       res.send(details);
     }
   });

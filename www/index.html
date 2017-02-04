@@ -9,12 +9,17 @@
   <body>
     <select id="artist" onchange="loadAlbum();"></select>
     <select id="album" onchange="loadTrack();"></select>
-    <select id="track" onchange="setAudio();"></select>
+    <select id="track" ondblclick="addTrack();"></select>
+    <button id="add" type="button" onclick="addTrack();">Add</button>
+    <ul id="playlist">
+    </ul>
     <br>
-    <audio id="audio" controls="controls" src="">
+    <audio id="audio" controls="controls" src="" onended="nextTrack();">
       Your browser does not grok the audio element.
     </audio>
     <script type="text/javascript">
+      var playlist = [];
+
       $(() => {
         $.get('/api/artists', (data) => {
           let artistEl = $('#artist');
@@ -59,37 +64,53 @@
             });
           }
           trackEl.html(options);
-          setAudio();
         });
       }
 
-      function setAudio() {
+      function addTrack() {
         let artistEl = $('#artist');
         let artist = artistEl.val();
         let albumEl = $('#album');
         let album = albumEl.val();
         let trackEl = $('#track');
         let track = trackEl.val();
-        let audioEl = $('#audio');
         if (track) {
           $.get('/api/artists/' + encodeURIComponent(artist) + '/albums/' + encodeURIComponent(album) + '/tracks/' + encodeURIComponent(track) + '/details', (data) => {
             if (data) {
-              audioEl.attr('src', '/music/' + encodePath(data.path));
-            } else {
-              audioEl.attr('src', '');
+              addToPlaylist(track, data.path);
             }
           });
-        } else {
-          audioEl.attr('src', '');
         }
       }
-      
-      function encodePath(path) {
-        parts = path.split('/');
-        for (var i = 0; i < parts.length; i++) {
-          parts[i] = encodeURIComponent(parts[i]);
+
+      function addToPlaylist(track, path) {
+        let playlistEl = $("#playlist");
+        playlistEl.html(playlistEl.html() + '<li>' + track + '</li>\n');
+        playlist.push({track: track, path: path});
+        if (playlist.length == 1) {
+          setAudio(path);
         }
-        return parts.join('/');
+      }
+
+      function removeFirstFromPlaylist() {
+        let playlistEl = $("#playlist");
+        let html = playlistEl.html();
+        let idx = html.indexOf('</li>');
+        playlistEl.html(html.substr(idx + 5, html.length));
+        playlist.shift();
+        if (playlist.length) {
+          setAudio(playlist[0].path);
+        }
+      }
+
+      function nextTrack() {
+        removeFirstFromPlaylist();
+      }
+
+      function setAudio(path) {
+        let audioEl = $('#audio');
+        audioEl.attr('src', path);
+        audioEl[0].play();
       }
     </script>
   </body>
